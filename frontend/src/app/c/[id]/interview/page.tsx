@@ -1,45 +1,60 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, use } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import InterviewRoom from '@/components/InterviewRoom';
 import { LoadingSpinner, PageLoading } from '@/components/LoadingSpinner';
+import { updateInterviewCandidate, updateInterviewRoom } from './actions';
 
-function InterviewContent() {
+function InterviewContent({ interviewId }: { interviewId: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [token, setToken] = useState('');
   const [serverUrl, setServerUrl] = useState('');
+  const [position, setPosition] = useState('');
+  const [interviewDuration, setInterviewDuration] = useState(30);
   const [error, setError] = useState('');
   const [isConnecting, setIsConnecting] = useState(true);
 
-  const position = searchParams.get('position') || 'frontend';
-  const difficulty = searchParams.get('difficulty') || 'mid';
   const userName = searchParams.get('name') || 'Candidate';
-  const hasResume = searchParams.get('hasResume') === 'true';
+  const email = searchParams.get('email') || '';
 
   useEffect(() => {
     let cancelled = false;
 
-    async function getToken() {
+    async function connect() {
       try {
-        // 从 sessionStorage 读取简历（避免 URL 过长）
-        let resume = '';
-        if (hasResume) {
-          resume = sessionStorage.getItem('interview-resume') || '';
-          // 读取后清理
-          sessionStorage.removeItem('interview-resume');
+        // Fetch interview info
+        const infoRes = await fetch(`/api/interviews/${interviewId}`);
+        if (!infoRes.ok) {
+          throw new Error('面试不存在');
+        }
+        const infoData = await infoRes.json();
+        const interview = infoData.interview;
+
+        if (interview.status === 'completed') {
+          router.push(`/c/${interviewId}/complete`);
+          return;
         }
 
+        // Update candidate info
+        await updateInterviewCandidate(interviewId, userName, email);
+
+        // Get resume from interview data (uploaded by recruiter)
+        const resume = interview.resume || '';
+
+        // Get LiveKit token
         const response = await fetch('/api/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             participant_name: userName,
-            participant_identity: `user-${Date.now()}`,
-            position,
-            difficulty,
+            participant_identity: `candidate-${interviewId}-${Date.now()}`,
+            room_name: `interview-${interviewId}`,
+            position: interview.position,
+            difficulty: interview.difficulty,
             resume,
+            interview_id: interviewId,
           }),
         });
 
@@ -49,36 +64,42 @@ function InterviewContent() {
 
         const data = await response.json();
         if (!cancelled) {
+          // Update room name in DB
+          await updateInterviewRoom(interviewId, data.roomName);
           setToken(data.participantToken);
           setServerUrl(data.serverUrl);
+          setPosition(interview.position);
+          setInterviewDuration(interview.duration || 30);
           setIsConnecting(false);
         }
       } catch (err) {
         if (!cancelled) {
-          setError('连接面试服务器失败，请重试');
+          setError(err instanceof Error ? err.message : '连接失败，请重试');
           setIsConnecting(false);
         }
       }
     }
 
-    getToken();
+    connect();
     return () => { cancelled = true; };
-  }, [position, difficulty, userName, hasResume]);
+  }, [interviewId, userName, email, router]);
 
   const handleDisconnected = () => {
-    // 如果已经有报告数据，说明是面试正常结束，跳到报告页
-    const existingReport = sessionStorage.getItem('interview-report');
-    if (existingReport) {
-      router.push('/report');
-    } else {
-      router.push('/');
-    }
+    router.push(`/c/${interviewId}/complete`);
   };
 
-  const handleReport = (report: Record<string, unknown>) => {
-    // Store report in sessionStorage for the report page to read
-    sessionStorage.setItem('interview-report', JSON.stringify(report));
-    router.push('/report');
+  const handleReport = async (report: Record<string, unknown>) => {
+    // Save report to database
+    try {
+      await fetch(`/api/interviews/${interviewId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report }),
+      });
+    } catch (err) {
+      console.error('Failed to save report:', err);
+    }
+    router.push(`/c/${interviewId}/complete`);
   };
 
   if (error) {
@@ -88,10 +109,10 @@ function InterviewContent() {
           <div className="text-red-400 text-xl mb-4">连接失败</div>
           <p className="text-gray-400 mb-6">{error}</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push(`/c/${interviewId}`)}
             className="px-6 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark transition-colors"
           >
-            返回首页
+            返回
           </button>
         </div>
       </div>
@@ -121,16 +142,18 @@ function InterviewContent() {
       serverUrl={serverUrl}
       position={position}
       userName={userName}
+      duration={interviewDuration}
       onDisconnected={handleDisconnected}
       onReport={handleReport}
     />
   );
 }
 
-export default function InterviewPage() {
+export default function CandidateInterviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   return (
     <Suspense fallback={<PageLoading text="Loading..." />}>
-      <InterviewContent />
+      <InterviewContent interviewId={id} />
     </Suspense>
   );
 }

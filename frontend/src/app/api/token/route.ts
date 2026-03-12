@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
       position,
       resume,
       difficulty,
+      interview_id,
     } = body;
 
     const roomName = room_name || `interview-${Date.now()}`;
@@ -59,6 +60,10 @@ export async function POST(req: NextRequest) {
       'interview.name': name,
     };
 
+    if (interview_id) {
+      at.attributes['interview.id'] = interview_id;
+    }
+
     if (resume) {
       at.attributes['interview.resume'] = resume;
     }
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
           position: position || 'frontend',
           resume: resume || '',
           difficulty: difficultyLabel,
+          interview_id: interview_id || '',
         }),
       });
       console.log(`Agent dispatched to room: ${roomName}, dispatch:`, JSON.stringify(dispatch));

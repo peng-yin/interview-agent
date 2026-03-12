@@ -56,7 +56,8 @@ services:
       - LLM_MODEL=${LLM_MODEL:-deepseek-ai/DeepSeek-V3}
       - STT_MODEL=${STT_MODEL:-FunAudioLLM/SenseVoiceSmall}
       - TTS_MODEL=${TTS_MODEL:-FunAudioLLM/CosyVoice2-0.5B}
-      - TTS_VOICE=${TTS_VOICE:-FunAudioLLM/CosyVoice2-0.5B:alex}
+      - TTS_VOICE=${TTS_VOICE:-FunAudioLLM/CosyVoice2-0.5B:bella}
+      - TTS_SPEED=${TTS_SPEED:-0.9}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-BAAI/bge-large-zh-v1.5}
       - CHROMA_URL=http://chromadb:8000
     depends_on:

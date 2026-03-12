@@ -1,15 +1,11 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { positionNames } from '@/lib/constants';
-import { PageLoading } from '@/components/LoadingSpinner';
+import { useEffect, useState, useCallback, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { positionNames, difficultyMap } from '@/lib/constants';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface InterviewReport {
-  type: string;
-  position: string;
-  difficulty: string;
-  timestamp: string;
   overallComment: string;
   technicalScore: number;
   communicationScore: number;
@@ -19,6 +15,20 @@ interface InterviewReport {
   improvements: string[];
   recommendation: string;
   detailedFeedback: string;
+}
+
+interface Interview {
+  id: string;
+  position: string;
+  difficulty: string;
+  duration: number;
+  candidate_name: string | null;
+  candidate_email: string | null;
+  status: string;
+  report: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 const recommendationConfig: Record<string, { color: string; bg: string; icon: string }> = {
@@ -67,45 +77,39 @@ function ScoreBar({ label, score, delay = 0 }: { label: string; score: number; d
   );
 }
 
-function ReportContent() {
-  const searchParams = useSearchParams();
+export default function RecruiterReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
+  const [interview, setInterview] = useState<Interview | null>(null);
   const [report, setReport] = useState<InterviewReport | null>(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const reportData = searchParams.get('data');
-    if (reportData) {
+    async function fetchData() {
       try {
-        const parsed = JSON.parse(decodeURIComponent(reportData));
-        setReport(parsed);
-      } catch {
-        try {
-          const stored = sessionStorage.getItem('interview-report');
-          if (stored) {
-            setReport(JSON.parse(stored));
-            sessionStorage.removeItem('interview-report');
+        const res = await fetch(`/api/interviews/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        setInterview(data.interview);
+        if (data.interview.report) {
+          try {
+            setReport(JSON.parse(data.interview.report));
+          } catch {
+            console.error('Failed to parse report');
           }
-        } catch {
-          console.error('Failed to parse report from sessionStorage');
         }
-      }
-    } else {
-      try {
-        const stored = sessionStorage.getItem('interview-report');
-        if (stored) {
-          setReport(JSON.parse(stored));
-          sessionStorage.removeItem('interview-report');
-        }
-      } catch {
-        console.error('Failed to parse report from sessionStorage');
+      } catch (err) {
+        console.error('Failed to fetch interview:', err);
+      } finally {
+        setLoading(false);
       }
     }
-  }, [searchParams]);
+    fetchData();
+  }, [id]);
 
   const exportAsText = useCallback(() => {
-    if (!report) return;
+    if (!report || !interview) return;
     const avgScore = (
       (report.technicalScore + report.communicationScore + report.experienceScore + report.problemSolvingScore) / 4
     ).toFixed(1);
@@ -113,9 +117,11 @@ function ReportContent() {
     const text = `
 面试评估报告
 ==========================================
-岗位: ${positionNames[report.position] || '工程师'}
-难度: ${report.difficulty}
-时间: ${new Date(report.timestamp).toLocaleString('zh-CN')}
+岗位: ${positionNames[interview.position] || '工程师'}
+难度: ${difficultyMap[interview.difficulty] || interview.difficulty}
+候选人: ${interview.candidate_name || '未知'}
+邮箱: ${interview.candidate_email || '未提供'}
+面试时间: ${interview.started_at ? new Date(interview.started_at).toLocaleString('zh-CN') : '未知'}
 推荐等级: ${report.recommendation}
 综合评分: ${avgScore}/10
 
@@ -143,43 +149,46 @@ ${report.detailedFeedback}
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `面试报告_${positionNames[report.position] || '工程师'}_${new Date().toLocaleDateString('zh-CN')}.txt`;
+    a.download = `面试报告_${interview.candidate_name || '候选人'}_${positionNames[interview.position] || '工程师'}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [report]);
+  }, [report, interview]);
 
   const copyReport = useCallback(() => {
-    if (!report) return;
+    if (!report || !interview) return;
     const avgScore = (
       (report.technicalScore + report.communicationScore + report.experienceScore + report.problemSolvingScore) / 4
     ).toFixed(1);
 
-    const text = `【面试评估报告】${positionNames[report.position] || '工程师'}\n综合评分: ${avgScore}/10 | 推荐: ${report.recommendation}\n\n技术: ${report.technicalScore}/10 | 沟通: ${report.communicationScore}/10 | 经验: ${report.experienceScore}/10 | 解题: ${report.problemSolvingScore}/10\n\n${report.overallComment}\n\n亮点: ${report.highlights.join('、')}\n待提高: ${report.improvements.join('、')}`;
+    const text = `【面试评估报告】${positionNames[interview.position] || '工程师'}\n候选人: ${interview.candidate_name || '未知'}\n综合评分: ${avgScore}/10 | 推荐: ${report.recommendation}\n\n技术: ${report.technicalScore}/10 | 沟通: ${report.communicationScore}/10 | 经验: ${report.experienceScore}/10 | 解题: ${report.problemSolvingScore}/10\n\n${report.overallComment}\n\n亮点: ${report.highlights.join('、')}\n待提高: ${report.improvements.join('、')}`;
 
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  }, [report]);
+  }, [report, interview]);
 
-  if (!report) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-bg">
+        <LoadingSpinner className="w-8 h-8 text-primary" />
+      </div>
+    );
+  }
+
+  if (!interview || !report) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-bg">
         <div className="glass-card rounded-3xl p-10 max-w-md text-center">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-surface-2 flex items-center justify-center">
-            <svg className="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div className="text-gray-300 text-xl font-semibold mb-2">暂无面试报告</div>
-          <p className="text-gray-600 mb-6">未找到面试报告数据，请先完成一场面试。</p>
+          <div className="text-gray-300 text-xl font-semibold mb-2">报告不可用</div>
+          <p className="text-gray-600 mb-6">面试报告尚未生成或面试不存在。</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/recruiter')}
             className="px-6 py-3 rounded-xl btn-gradient text-white font-medium transition-all"
           >
-            <span className="relative">返回首页</span>
+            <span className="relative">返回管理面板</span>
           </button>
         </div>
       </div>
@@ -197,22 +206,25 @@ ${report.detailedFeedback}
   };
 
   return (
-    <div className="min-h-screen gradient-bg" ref={reportRef}>
+    <div className="min-h-screen gradient-bg">
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/8 ring-1 ring-primary/15 mb-5 backdrop-blur-md">
-            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <div className="flex items-center gap-3 mb-8">
+          <button
+            onClick={() => router.push('/recruiter')}
+            className="p-2 rounded-lg bg-surface-2 ring-1 ring-white/[0.06] text-gray-500 hover:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="text-sm text-brand-400 font-medium">面试评估报告</span>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">面试报告</h1>
+            <p className="text-gray-600 text-sm">
+              {positionNames[interview.position]} · {interview.candidate_name || '候选人'}
+              {interview.candidate_email && ` · ${interview.candidate_email}`}
+            </p>
           </div>
-          <h1 className="text-3xl font-bold mb-3 text-gradient tracking-tight">
-            {positionNames[report.position] || '工程师'} 面试报告
-          </h1>
-          <p className="text-gray-600 text-sm">
-            {new Date(report.timestamp).toLocaleString('zh-CN')} · 难度: {report.difficulty}
-          </p>
         </div>
 
         {/* Score + Recommendation Hero */}
@@ -240,6 +252,14 @@ ${report.detailedFeedback}
           </div>
 
           <p className="text-gray-400 text-base leading-relaxed relative">{report.overallComment}</p>
+
+          {/* Candidate info */}
+          <div className="mt-5 pt-5 border-t border-white/[0.04] flex flex-wrap gap-4 text-xs text-gray-600">
+            <span>候选人: {interview.candidate_name}</span>
+            {interview.candidate_email && <span>邮箱: {interview.candidate_email}</span>}
+            <span>难度: {difficultyMap[interview.difficulty] || interview.difficulty}</span>
+            {interview.completed_at && <span>完成时间: {new Date(interview.completed_at).toLocaleString('zh-CN')}</span>}
+          </div>
         </div>
 
         {/* Score Breakdown */}
@@ -315,15 +335,10 @@ ${report.detailedFeedback}
         {/* Actions */}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/recruiter')}
             className="px-8 py-3 rounded-2xl btn-gradient text-white font-medium transition-all active:scale-95"
           >
-            <span className="relative flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-              再来一场面试
-            </span>
+            <span className="relative">返回管理面板</span>
           </button>
 
           <button
@@ -365,20 +380,7 @@ ${report.detailedFeedback}
             </span>
           </button>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-gray-700 text-xs mt-8 tracking-wider">
-          Powered by LiveKit · DeepSeek · SiliconFlow
-        </p>
       </div>
     </div>
-  );
-}
-
-export default function ReportPage() {
-  return (
-    <Suspense fallback={<PageLoading />}>
-      <ReportContent />
-    </Suspense>
   );
 }

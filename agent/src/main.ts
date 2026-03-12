@@ -32,14 +32,30 @@ async function generateAndSendReport(
   try {
     // Collect chat history for report generation
     const chatCtx = session.chatCtx;
-    const messages = chatCtx.items
-      .filter((item): item is { role: string; textContent?: string; type: string } =>
-        'role' in item && item.type === 'message'
-      )
-      .map((m) => ({
-        role: m.role,
-        content: m.textContent || '',
-      }));
+    console.log(`[Report] chatCtx has ${chatCtx.items.length} items`);
+
+    const messages: { role: string; content: string }[] = [];
+    for (const item of chatCtx.items) {
+      if (item.type === 'message') {
+        const msg = item as llm.ChatMessage;
+        const text = msg.textContent || '';
+        if (text.trim()) {
+          messages.push({ role: msg.role, content: text });
+        }
+      }
+    }
+
+    console.log(`[Report] Extracted ${messages.length} messages for report`);
+    if (messages.length > 0) {
+      console.log('[Report] Messages preview:', messages.slice(0, 3).map(m => `${m.role}: ${m.content.substring(0, 50)}...`));
+    }
+
+    // If no messages at all, send fallback directly
+    if (messages.length === 0) {
+      console.log('[Report] No messages found, sending fallback report');
+      await sendFallbackReport(ctx, position, difficulty);
+      return;
+    }
 
     const reportLLM = new openai.LLM({
       model: process.env.LLM_MODEL || 'deepseek-ai/DeepSeek-V3',
@@ -49,9 +65,9 @@ async function generateAndSendReport(
     const reportPrompt = `你是一位资深的面试评估专家。根据以下面试对话记录，生成一份结构化的面试评估报告。
 
 面试对话记录：
-${messages.map((m) => `${m.role}: ${m.content}`).join('\n')}
+${messages.map((m) => `${m.role === 'assistant' ? '面试官' : '候选人'}: ${m.content}`).join('\n')}
 
-请严格按照以下 JSON 格式返回评估报告（不要添加其他内容，只返回 JSON）：
+请严格按照以下 JSON 格式返回评估报告（不要添加markdown代码块标记，不要添加其他内容，只返回纯 JSON）：
 {
   "overallComment": "总体评价，一句话概括候选人表现",
   "technicalScore": 数字1-10,
@@ -62,9 +78,7 @@ ${messages.map((m) => `${m.role}: ${m.content}`).join('\n')}
   "improvements": ["改进点1", "改进点2"],
   "recommendation": "推荐/待定/不推荐/强烈推荐",
   "detailedFeedback": "详细反馈，100-300字的综合评价"
-}
-
-注意：由于面试时间很短，请基于已有对话做出合理评估。如果对话内容不多，可以适当说明。`;
+}`;
 
     const chatContext = new llm.ChatContext();
     chatContext.addMessage({
@@ -72,6 +86,7 @@ ${messages.map((m) => `${m.role}: ${m.content}`).join('\n')}
       content: reportPrompt,
     });
 
+    console.log('[Report] Calling LLM for report generation...');
     const reportStream = reportLLM.chat({
       chatCtx: chatContext,
     });
@@ -83,49 +98,82 @@ ${messages.map((m) => `${m.role}: ${m.content}`).join('\n')}
       }
     }
 
-    console.log('Raw report from LLM:', reportText);
+    console.log('[Report] Raw report from LLM (length=%d):', reportText.length, reportText);
 
-    // Extract JSON from response
-    const jsonMatch = reportText.match(/\{[\s\S]*\}/);
+    // Extract JSON from response - strip markdown code block if present
+    let cleanedText = reportText.trim();
+    // Remove ```json ... ``` wrapping
+    cleanedText = cleanedText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+
+    const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('Failed to extract JSON from LLM report response');
-      // Send a fallback report
-      const fallbackReport = {
-        type: 'interview-report',
-        position,
-        difficulty,
-        timestamp: new Date().toISOString(),
-        overallComment: '面试时间较短，无法进行完整评估',
-        technicalScore: 5,
-        communicationScore: 5,
-        experienceScore: 5,
-        problemSolvingScore: 5,
-        highlights: ['候选人参与了面试'],
-        improvements: ['建议进行更长时间的面试以充分展示能力'],
-        recommendation: '待定',
-        detailedFeedback: '由于面试时间较短，无法对候选人进行全面评估。建议安排更长时间的面试。',
-      };
-      await publishJsonData(ctx.room, 'interview-report', fallbackReport);
-      console.log('Fallback report sent to frontend');
+      console.error('[Report] Failed to extract JSON from LLM response, sending fallback');
+      await sendFallbackReport(ctx, position, difficulty);
       return;
     }
 
-    const reportData = JSON.parse(jsonMatch[0]);
+    let reportData;
+    try {
+      reportData = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      console.error('[Report] JSON parse error:', parseErr, 'Raw JSON:', jsonMatch[0].substring(0, 200));
+      await sendFallbackReport(ctx, position, difficulty);
+      return;
+    }
+
+    // Validate required fields
+    const requiredFields = ['overallComment', 'technicalScore', 'communicationScore', 'experienceScore', 'problemSolvingScore', 'recommendation', 'detailedFeedback'];
+    const missingFields = requiredFields.filter(f => !(f in reportData));
+    if (missingFields.length > 0) {
+      console.error('[Report] Missing required fields:', missingFields);
+      await sendFallbackReport(ctx, position, difficulty);
+      return;
+    }
+
     const fullReport = {
       type: 'interview-report',
       position,
       difficulty,
       timestamp: new Date().toISOString(),
       ...reportData,
+      // Ensure arrays
+      highlights: Array.isArray(reportData.highlights) ? reportData.highlights : ['候选人参与了面试'],
+      improvements: Array.isArray(reportData.improvements) ? reportData.improvements : ['建议进行更长时间的面试'],
     };
 
     await publishJsonData(ctx.room, 'interview-report', fullReport);
-    console.log('Interview report sent to frontend');
+    console.log('[Report] Interview report sent to frontend successfully');
     // Wait to ensure data is flushed
     await new Promise((resolve) => setTimeout(resolve, 2000));
   } catch (err) {
-    console.error('Failed to generate/send report:', err);
+    console.error('[Report] Failed to generate/send report:', err);
+    // Try sending fallback on any error
+    try {
+      await sendFallbackReport(ctx, position, difficulty);
+    } catch (fallbackErr) {
+      console.error('[Report] Even fallback report failed:', fallbackErr);
+    }
   }
+}
+
+async function sendFallbackReport(ctx: JobContext, position: string, difficulty: string) {
+  const fallbackReport = {
+    type: 'interview-report',
+    position,
+    difficulty,
+    timestamp: new Date().toISOString(),
+    overallComment: '面试时间较短，无法进行完整评估',
+    technicalScore: 5,
+    communicationScore: 5,
+    experienceScore: 5,
+    problemSolvingScore: 5,
+    highlights: ['候选人参与了面试'],
+    improvements: ['建议进行更长时间的面试以充分展示能力'],
+    recommendation: '待定',
+    detailedFeedback: '由于面试时间较短，无法对候选人进行全面评估。建议安排更长时间的面试。',
+  };
+  await publishJsonData(ctx.room, 'interview-report', fallbackReport);
+  console.log('[Report] Fallback report sent to frontend');
 }
 
 export default defineAgent({
@@ -180,9 +228,19 @@ export default defineAgent({
       }),
       tts: new openai.TTS({
         model: process.env.TTS_MODEL || 'FunAudioLLM/CosyVoice2-0.5B',
-        voice: process.env.TTS_VOICE || 'FunAudioLLM/CosyVoice2-0.5B:alex',
+        voice: (process.env.TTS_VOICE || 'FunAudioLLM/CosyVoice2-0.5B:alex') as any,
+        speed: Number(process.env.TTS_SPEED) || 0.9,
         ...siliconFlowConfig,
       }),
+      turnDetection: 'stt',
+      voiceOptions: {
+        minEndpointingDelay: 800,     // 800ms silence before considering end-of-turn (give candidates time to think)
+        maxEndpointingDelay: 3000,    // Max 3s before forcing end-of-turn
+        minInterruptionDuration: 500, // 500ms of speech needed to interrupt the agent
+        minInterruptionWords: 1,      // Require at least 1 word before agent can be interrupted (Chinese-friendly)
+        allowInterruptions: true,
+        userAwayTimeout: 20,          // 20s without speech triggers away state (interview needs more thinking time)
+      },
     });
 
     // Create interview agent with position & resume context
@@ -196,6 +254,26 @@ export default defineAgent({
     await session.start({
       agent,
       room: ctx.room,
+    });
+
+    // 当用户长时间不说话时，主动追问
+    let awayCount = 0;
+    session.on(voice.AgentSessionEventTypes.UserStateChanged, (ev: voice.UserStateChangedEvent) => {
+      if (ev.newState === 'away') {
+        awayCount++;
+        console.log(`User away detected (count: ${awayCount})`);
+        if (awayCount <= 3) {
+          // 前3次主动引导
+          const prompts = [
+            '候选人沉默了一段时间，可能在思考或没听清。请用友好的语气提醒一下，比如"你好，能听到我说话吗？如果准备好了可以开始回答"',
+            '候选人仍然没有回应，请换一种方式引导，比如"没关系，我们可以先从一个简单的问题开始，你方便做一下自我介绍吗？"',
+            '候选人持续沉默，请温和地询问是否遇到了技术问题，比如"你的麦克风是否正常工作？如果有任何问题可以告诉我"',
+          ];
+          session.generateReply({
+            instructions: prompts[awayCount - 1],
+          });
+        }
+      }
     });
 
     // Listen for end-interview signal from frontend (button click or timer)
@@ -235,7 +313,7 @@ export default defineAgent({
 
     // Generate initial greeting
     const positionLabel = positionNames[position] || '技术';
-    const greetingInstructions = `用友好的语气和候选人打招呼，简单介绍你是${positionLabel}技术面试官，然后请候选人做一个简单的自我介绍。`;
+    const greetingInstructions = `你是${positionLabel}技术面试官。现在面试刚开始，请用简短友好的语气和候选人打招呼，介绍你自己是${positionLabel}技术面试官，然后请候选人做一个简单的自我介绍。注意：只说和技术面试相关的内容，不要偏离主题。`;
 
     session.generateReply({
       instructions: greetingInstructions,

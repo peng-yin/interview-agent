@@ -27,5 +27,12 @@ Thumbs.db
 # Lock files (optional, uncomment if you want to commit them)
 # package-lock.json
 
+# SQLite database
+frontend/data/
+*.db
+
+# Build info
+tsconfig.tsbuildinfo
+
 # CodeBuddy
 .codebuddy/
