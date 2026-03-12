@@ -1,0 +1,48 @@
+{
+  "position": "common",
+  "name": "通用面试环节",
+  "categories": [
+    {
+      "id": "self_intro",
+      "name": "自我介绍",
+      "questions": [
+        {
+          "id": "cm_intro_001",
+          "question": "请用两三分钟做一个自我介绍吧。",
+          "key_points": ["工作年限", "技术栈", "项目亮点", "职业规划"],
+          "difficulty": "初级",
+          "follow_ups": ["你觉得你最大的技术优势是什么？", "为什么考虑换工作？"],
+          "scoring_criteria": "表达清晰、有逻辑性、突出技术亮点"
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "name": "项目经验",
+      "questions": [
+        {
+          "id": "cm_proj_001",
+          "question": "说一个你最有成就感的项目，介绍一下你在其中承担的角色和做了什么。",
+          "key_points": ["项目背景", "技术方案", "个人贡献", "遇到的困难", "成果数据"],
+          "difficulty": "中级",
+          "follow_ups": ["这个项目中你遇到的最大技术挑战是什么？怎么解决的？", "如果让你重新做这个项目，有什么会改进的？"],
+          "scoring_criteria": "能用STAR法则清晰描述，有量化成果"
+        }
+      ]
+    },
+    {
+      "id": "soft_skills",
+      "name": "软技能",
+      "questions": [
+        {
+          "id": "cm_soft_001",
+          "question": "你平时是怎么学习新技术的？",
+          "key_points": ["学习方法", "信息来源", "实践方式", "技术博客"],
+          "difficulty": "初级",
+          "follow_ups": ["最近在学什么新技术？", "你有写技术博客或参与开源的习惯吗？"],
+          "scoring_criteria": "有系统的学习方法和持续学习的习惯"
+        }
+      ]
+    }
+  ]
+}

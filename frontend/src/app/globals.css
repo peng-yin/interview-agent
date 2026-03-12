@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #ededed;
+  --background: #0a0a0f;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* LiveKit component overrides */
+[data-lk-theme='default'] {
+  --lk-bg: #0a0a0f;
+  --lk-bg2: #1a1a24;
+  --lk-fg: #ededed;
+  --lk-border-color: #2a2a3a;
+}
+
+/* Audio visualizer animation */
+@keyframes audioBar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.audio-bar {
+  animation: audioBar 0.8s ease-in-out infinite;
+}
+
+.audio-bar:nth-child(2) { animation-delay: 0.1s; }
+.audio-bar:nth-child(3) { animation-delay: 0.2s; }
+.audio-bar:nth-child(4) { animation-delay: 0.3s; }
+.audio-bar:nth-child(5) { animation-delay: 0.15s; }
+
+/* Gradient background */
+.gradient-bg {
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(99, 102, 241, 0.15) 0%,
+    rgba(139, 92, 246, 0.05) 40%,
+    transparent 70%
+  );
+}
+
+/* Glass card */
+.glass-card {
+  background: rgba(26, 26, 36, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(42, 42, 58, 0.5);
+}

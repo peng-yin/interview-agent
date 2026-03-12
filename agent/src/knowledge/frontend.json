@@ -1,0 +1,178 @@
+{
+  "position": "frontend",
+  "name": "前端工程师",
+  "categories": [
+    {
+      "id": "javascript",
+      "name": "JavaScript 基础",
+      "questions": [
+        {
+          "id": "fe_js_001",
+          "question": "请解释 JavaScript 中的闭包是什么？能举一个实际应用的例子吗？",
+          "key_points": ["词法作用域", "函数嵌套", "变量持久化", "内存泄漏风险"],
+          "difficulty": "中级",
+          "follow_ups": ["闭包会导致什么问题？如何避免？", "闭包和立即执行函数有什么关系？"],
+          "scoring_criteria": "能解释词法作用域并举出防抖/节流/模块化等实际例子得满分"
+        },
+        {
+          "id": "fe_js_002",
+          "question": "请解释一下 JavaScript 的事件循环机制，宏任务和微任务的区别是什么？",
+          "key_points": ["调用栈", "任务队列", "微任务优先", "Promise", "setTimeout"],
+          "difficulty": "中级",
+          "follow_ups": ["Promise.then 和 setTimeout 谁先执行？为什么？", "async/await 的底层原理是什么？"],
+          "scoring_criteria": "能清晰说明宏任务微任务执行顺序，并能给出代码执行结果分析"
+        },
+        {
+          "id": "fe_js_003",
+          "question": "JavaScript 中的原型链是怎么工作的？prototype 和 __proto__ 有什么区别？",
+          "key_points": ["原型链查找", "构造函数", "prototype属性", "Object.create"],
+          "difficulty": "中级",
+          "follow_ups": ["如何实现一个完整的继承？", "ES6 的 class 和原型链是什么关系？"],
+          "scoring_criteria": "能画出原型链关系并解释查找机制"
+        },
+        {
+          "id": "fe_js_004",
+          "question": "说说你对 this 指向的理解，有哪些规则？",
+          "key_points": ["默认绑定", "隐式绑定", "显式绑定", "new绑定", "箭头函数"],
+          "difficulty": "中级",
+          "follow_ups": ["call、apply、bind 有什么区别？", "箭头函数的 this 有什么特点？"],
+          "scoring_criteria": "能说出四种绑定规则及优先级"
+        },
+        {
+          "id": "fe_js_005",
+          "question": "ES6 以来你最常用的新特性有哪些？能说说它们解决了什么问题吗？",
+          "key_points": ["let/const", "解构赋值", "模板字符串", "Proxy", "Symbol", "Iterator"],
+          "difficulty": "初级",
+          "follow_ups": ["Proxy 和 Object.defineProperty 有什么区别？", "WeakMap 和 Map 的区别是什么？"],
+          "scoring_criteria": "能列举5个以上特性并说明实际应用场景"
+        }
+      ]
+    },
+    {
+      "id": "react",
+      "name": "React 框架",
+      "questions": [
+        {
+          "id": "fe_react_001",
+          "question": "请解释 React 的虚拟 DOM 是什么？它的 diff 算法是怎么工作的？",
+          "key_points": ["虚拟DOM树", "diff策略", "同层比较", "key的作用", "批量更新"],
+          "difficulty": "中级",
+          "follow_ups": ["为什么列表渲染需要 key？用 index 作为 key 有什么问题？", "React 18 的并发渲染和虚拟DOM有什么关系？"],
+          "scoring_criteria": "能说明三个diff策略并解释key的重要性"
+        },
+        {
+          "id": "fe_react_002",
+          "question": "React Hooks 的实现原理是什么？为什么 Hooks 不能在条件语句中使用？",
+          "key_points": ["链表存储", "调用顺序", "Fiber节点", "闭包陷阱"],
+          "difficulty": "高级",
+          "follow_ups": ["useEffect 和 useLayoutEffect 的区别是什么？", "如何解决 Hooks 的闭包陷阱？"],
+          "scoring_criteria": "能解释链表存储机制和调用顺序的重要性"
+        },
+        {
+          "id": "fe_react_003",
+          "question": "你在项目中是怎么做 React 性能优化的？",
+          "key_points": ["React.memo", "useMemo", "useCallback", "代码分割", "虚拟列表"],
+          "difficulty": "中级",
+          "follow_ups": ["什么情况下不应该使用 useMemo？", "React 18 的 useTransition 是怎么优化性能的？"],
+          "scoring_criteria": "能结合实际项目说出3种以上优化手段"
+        },
+        {
+          "id": "fe_react_004",
+          "question": "React 的状态管理你用过哪些方案？它们各有什么优缺点？",
+          "key_points": ["useState", "useContext", "Redux", "Zustand", "Jotai", "状态提升"],
+          "difficulty": "中级",
+          "follow_ups": ["什么场景适合用全局状态管理？什么场景用本地状态就够了？", "Redux 的中间件机制是怎么工作的？"],
+          "scoring_criteria": "能对比至少两种方案的适用场景"
+        }
+      ]
+    },
+    {
+      "id": "css",
+      "name": "CSS 与布局",
+      "questions": [
+        {
+          "id": "fe_css_001",
+          "question": "请说说 Flex 布局和 Grid 布局的区别，各自适合什么场景？",
+          "key_points": ["一维vs二维", "主轴交叉轴", "grid-template", "响应式"],
+          "difficulty": "初级",
+          "follow_ups": ["如何实现一个自适应的瀑布流布局？", "flex: 1 具体代表什么含义？"],
+          "scoring_criteria": "能区分一维二维布局并给出具体场景"
+        },
+        {
+          "id": "fe_css_002",
+          "question": "BFC 是什么？它能解决哪些问题？",
+          "key_points": ["块级格式化上下文", "margin重叠", "浮动清除", "触发条件"],
+          "difficulty": "中级",
+          "follow_ups": ["除了 BFC 还有哪些格式化上下文？", "position: absolute 会触发 BFC 吗？"],
+          "scoring_criteria": "能说出BFC的触发条件和至少两个应用场景"
+        }
+      ]
+    },
+    {
+      "id": "network",
+      "name": "网络与浏览器",
+      "questions": [
+        {
+          "id": "fe_net_001",
+          "question": "从输入 URL 到页面显示完成，中间经历了哪些过程？",
+          "key_points": ["DNS解析", "TCP连接", "HTTP请求", "HTML解析", "渲染树", "回流重绘"],
+          "difficulty": "中级",
+          "follow_ups": ["浏览器的渲染流程中，回流和重绘有什么区别？", "如何减少回流？"],
+          "scoring_criteria": "能完整说出从DNS到渲染的关键步骤"
+        },
+        {
+          "id": "fe_net_002",
+          "question": "HTTP 缓存机制有哪些？强缓存和协商缓存的区别是什么？",
+          "key_points": ["Cache-Control", "ETag", "Last-Modified", "304"],
+          "difficulty": "中级",
+          "follow_ups": ["ETag 和 Last-Modified 哪个优先级更高？", "如何实现一个不缓存的接口？"],
+          "scoring_criteria": "能说出强缓存和协商缓存的完整字段和流程"
+        },
+        {
+          "id": "fe_net_003",
+          "question": "跨域问题是怎么产生的？有哪些解决方案？",
+          "key_points": ["同源策略", "CORS", "代理", "JSONP", "预检请求"],
+          "difficulty": "初级",
+          "follow_ups": ["CORS 的预检请求是什么？什么情况会触发？", "Nginx 反向代理是怎么解决跨域的？"],
+          "scoring_criteria": "能说出至少3种方案并解释CORS机制"
+        }
+      ]
+    },
+    {
+      "id": "engineering",
+      "name": "工程化",
+      "questions": [
+        {
+          "id": "fe_eng_001",
+          "question": "Webpack 和 Vite 的区别是什么？为什么 Vite 开发环境更快？",
+          "key_points": ["ESM原生支持", "按需编译", "HMR", "esbuild", "Rollup"],
+          "difficulty": "中级",
+          "follow_ups": ["Vite 的预构建是做什么的？", "生产环境为什么 Vite 还是用 Rollup？"],
+          "scoring_criteria": "能从原理层面解释Vite的性能优势"
+        },
+        {
+          "id": "fe_eng_002",
+          "question": "你在项目中是怎么做前端监控和错误上报的？",
+          "key_points": ["性能监控", "错误捕获", "PV/UV", "Sentry", "自建方案"],
+          "difficulty": "高级",
+          "follow_ups": ["如何捕获异步错误？", "Source Map 在生产环境怎么处理？"],
+          "scoring_criteria": "能说出完整的监控方案并有实际经验"
+        }
+      ]
+    },
+    {
+      "id": "typescript",
+      "name": "TypeScript",
+      "questions": [
+        {
+          "id": "fe_ts_001",
+          "question": "TypeScript 中 interface 和 type 有什么区别？什么时候用哪个？",
+          "key_points": ["声明合并", "交叉类型", "extends", "映射类型"],
+          "difficulty": "初级",
+          "follow_ups": ["泛型约束是怎么工作的？", "你用过哪些高级类型工具？比如 Partial、Pick、Omit？"],
+          "scoring_criteria": "能说出核心区别并给出实际使用建议"
+        }
+      ]
+    }
+  ]
+}

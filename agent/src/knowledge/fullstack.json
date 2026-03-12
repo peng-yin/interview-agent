@@ -1,0 +1,56 @@
+{
+  "position": "fullstack",
+  "name": "全栈工程师",
+  "categories": [
+    {
+      "id": "architecture",
+      "name": "全栈架构设计",
+      "questions": [
+        {
+          "id": "fs_arch_001",
+          "question": "如果让你从零搭建一个全栈项目，你会怎么选择技术栈？为什么？",
+          "key_points": ["前端框架选型", "后端语言选型", "数据库选型", "部署方案", "CI/CD"],
+          "difficulty": "高级",
+          "follow_ups": ["SSR 和 CSR 各自适合什么场景？", "你怎么看 Next.js 这类全栈框架？"],
+          "scoring_criteria": "能给出合理的技术选型并说明理由"
+        },
+        {
+          "id": "fs_arch_002",
+          "question": "前后端分离的项目中，API 设计有哪些最佳实践？",
+          "key_points": ["RESTful", "GraphQL", "接口版本控制", "错误码设计", "分页"],
+          "difficulty": "中级",
+          "follow_ups": ["REST 和 GraphQL 各自的优缺点？", "如何设计一个好的错误返回结构？"],
+          "scoring_criteria": "能从实际项目经验给出API设计规范"
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "name": "安全",
+      "questions": [
+        {
+          "id": "fs_sec_001",
+          "question": "Web 安全中常见的攻击方式有哪些？如何防范？",
+          "key_points": ["XSS", "CSRF", "SQL注入", "CSP", "HttpOnly"],
+          "difficulty": "中级",
+          "follow_ups": ["如何实现一个安全的用户认证系统？", "JWT 和 Session 各有什么优缺点？"],
+          "scoring_criteria": "能说出至少3种攻击方式及对应防范措施"
+        }
+      ]
+    },
+    {
+      "id": "performance",
+      "name": "性能优化",
+      "questions": [
+        {
+          "id": "fs_perf_001",
+          "question": "一个页面加载很慢，你会怎么排查和优化？",
+          "key_points": ["网络层", "资源加载", "渲染性能", "代码优化", "CDN", "缓存策略"],
+          "difficulty": "高级",
+          "follow_ups": ["Lighthouse 各项指标代表什么？", "如何优化首屏加载时间？"],
+          "scoring_criteria": "能从前后端全链路分析性能瓶颈"
+        }
+      ]
+    }
+  ]
+}

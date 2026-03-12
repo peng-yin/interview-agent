@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # LiveKit Server
+  livekit-server:
+    image: livekit/livekit-server:latest
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    command: ["--config", "/etc/livekit.yaml"]
+    restart: unless-stopped
+
+  # ChromaDB for RAG
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=secret
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - NEXT_PUBLIC_LIVEKIT_URL=ws://localhost:7880
+      - AGENT_NAME=interview-agent
+    depends_on:
+      - livekit-server
+    restart: unless-stopped
+
+  # Agent (Node.js)
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=secret
+      - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY}
+      - SILICONFLOW_BASE_URL=${SILICONFLOW_BASE_URL:-https://api.siliconflow.cn/v1}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-ai/DeepSeek-V3}
+      - STT_MODEL=${STT_MODEL:-FunAudioLLM/SenseVoiceSmall}
+      - TTS_MODEL=${TTS_MODEL:-FunAudioLLM/CosyVoice2-0.5B}
+      - TTS_VOICE=${TTS_VOICE:-FunAudioLLM/CosyVoice2-0.5B:alex}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-BAAI/bge-large-zh-v1.5}
+      - CHROMA_URL=http://chromadb:8000
+    depends_on:
+      - livekit-server
+      - chromadb
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
