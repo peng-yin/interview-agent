@@ -24,11 +24,10 @@ function InterviewContent() {
     async function getToken() {
       try {
         // 从 sessionStorage 读取简历（避免 URL 过长）
+        // 注意：不立即删除，等 token 请求成功后再清理，防止 StrictMode 或请求失败时丢失数据
         let resume = '';
         if (hasResume) {
           resume = sessionStorage.getItem('interview-resume') || '';
-          // 读取后清理
-          sessionStorage.removeItem('interview-resume');
         }
 
         const response = await fetch('/api/token', {
@@ -49,6 +48,8 @@ function InterviewContent() {
 
         const data = await response.json();
         if (!cancelled) {
+          // Token 获取成功后清理 sessionStorage 中的简历数据
+          sessionStorage.removeItem('interview-resume');
           setToken(data.participantToken);
           setServerUrl(data.serverUrl);
           setIsConnecting(false);

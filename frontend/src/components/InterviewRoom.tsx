@@ -19,7 +19,7 @@ function TypewriterText({ text, isFinal, speed = 30 }: { text: string; isFinal: 
   const [displayedLen, setDisplayedLen] = useState(0);
   const prevTextRef = useRef('');
   const displayedLenRef = useRef(0);
-  const animFrameRef = useRef<ReturnType<typeof setTimeout>>();
+  const animFrameRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // 同步 ref
   useEffect(() => {
@@ -153,7 +153,7 @@ function InterviewUI({
   const lastAgentSegCountRef = useRef(0);
   const lastUserSegCountRef = useRef(0);
   const reportReceivedRef = useRef(false);
-  const sendEndSignalRef = useRef<(reason: 'button' | 'timeout') => Promise<void>>();
+  const sendEndSignalRef = useRef<(reason: 'button' | 'timeout') => Promise<void>>(undefined);
 
   // Derive agent state from useVoiceAssistant
   const agentState = voiceAssistant.state;
@@ -391,9 +391,11 @@ function InterviewUI({
     };
   }, [room, onReport]);
 
-  // Safety timeout
+  // Safety timeout - 报告收到后清除超时
   useEffect(() => {
     if (!isEnding) return;
+    // 如果已收到报告，不需要安全超时
+    if (reportReceivedRef.current) return;
     const timeout = setTimeout(() => {
       console.warn('Report generation timed out, disconnecting...');
       room.disconnect();

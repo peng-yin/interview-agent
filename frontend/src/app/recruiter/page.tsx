@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { positionNames, difficultyMap } from '@/lib/constants';
 
 interface Interview {
   id: string;
@@ -19,18 +20,6 @@ interface Interview {
   started_at: string | null;
   completed_at: string | null;
 }
-
-const positionNames: Record<string, string> = {
-  frontend: '前端工程师',
-  backend: '后端工程师',
-  fullstack: '全栈工程师',
-};
-
-const difficultyNames: Record<string, string> = {
-  junior: '初级',
-  mid: '中级',
-  senior: '高级',
-};
 
 const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
   pending: { label: '等待面试', color: 'text-amber-400', dot: 'bg-amber-400' },
@@ -433,7 +422,7 @@ export default function RecruiterDashboard() {
                             {positionNames[interview.position] || interview.position}
                           </span>
                           <span className="text-xs px-2 py-0.5 rounded-full bg-surface-3 text-gray-500 ring-1 ring-white/[0.04]">
-                            {difficultyNames[interview.difficulty] || interview.difficulty}
+                            {difficultyMap[interview.difficulty] || interview.difficulty}
                           </span>
                           <span className="text-xs px-2 py-0.5 rounded-full bg-surface-3 text-gray-500 ring-1 ring-white/[0.04]">
                             {interview.duration}分钟

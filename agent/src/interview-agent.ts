@@ -1,6 +1,5 @@
 import { voice, llm } from '@livekit/agents';
 import type { Room } from '@livekit/rtc-node';
-import { z } from 'zod';
 import { searchQuestions, formatRAGResults } from './rag/knowledge-base.js';
 import { getInterviewerInstructions } from './prompts/interviewer.js';
 import { publishJsonData } from './utils/data-channel.js';
@@ -29,47 +28,10 @@ export class InterviewAgent extends voice.Agent {
 
   constructor(config: InterviewConfig) {
     const instructions = getInterviewerInstructions(config.position, config.resume);
-    const room = config.room;
 
     super({
       instructions,
       chatCtx: config.chatCtx,
-      tools: {
-        endInterview: llm.tool({
-          description: '当面试结束时调用此工具，生成面试评估报告。你需要根据整场面试的对话内容，对候选人进行全面评估。',
-          parameters: z.object({
-            overallComment: z.string().describe('总体评价，一句话概括候选人表现'),
-            technicalScore: z.number().min(1).max(10).describe('技术能力评分，1-10分'),
-            communicationScore: z.number().min(1).max(10).describe('沟通表达评分，1-10分'),
-            experienceScore: z.number().min(1).max(10).describe('项目经验评分，1-10分'),
-            problemSolvingScore: z.number().min(1).max(10).describe('问题解决能力评分，1-10分'),
-            highlights: z.array(z.string()).describe('候选人的亮点，列出2-4条'),
-            improvements: z.array(z.string()).describe('候选人需要提高的地方，列出2-4条'),
-            recommendation: z.enum(['强烈推荐', '推荐', '待定', '不推荐']).describe('是否推荐进入下一轮'),
-            detailedFeedback: z.string().describe('详细反馈，100-300字的综合评价'),
-          }),
-          execute: async (report) => {
-            console.log('endInterview tool called, preparing report...');
-            try {
-              const reportData = {
-                type: 'interview-report',
-                position: config.position,
-                difficulty: config.difficulty || '中级',
-                timestamp: new Date().toISOString(),
-                ...report,
-              };
-              console.log('Publishing report data to frontend...');
-              await publishJsonData(room, 'interview-report', reportData);
-              console.log('Interview report sent to frontend');
-              // Wait a moment to ensure data is flushed before session ends
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-            } catch (err) {
-              console.error('Failed to send report:', err);
-            }
-            return `面试评估已生成并发送给候选人。`;
-          },
-        }),
-      },
     });
 
     this.position = config.position;
@@ -117,7 +79,7 @@ export class InterviewAgent extends voice.Agent {
       if (results.length > 0) {
         const ragContent = formatRAGResults(results);
         turnCtx.addMessage({
-          role: 'assistant',
+          role: 'system',
           content: `[面试题库参考 - 仅供你参考，不要直接念出来]\n${ragContent}\n\n请根据候选人的回答水平，结合以上参考信息，自然地追问或过渡到下一个问题。`,
         });
       }

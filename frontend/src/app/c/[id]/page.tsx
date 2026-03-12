@@ -3,18 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-
-const positionNames: Record<string, string> = {
-  frontend: '前端工程师',
-  backend: '后端工程师',
-  fullstack: '全栈工程师',
-};
-
-const difficultyNames: Record<string, string> = {
-  junior: '初级 (1-3年)',
-  mid: '中级 (3-5年)',
-  senior: '高级 (5年以上)',
-};
+import { positionNames, difficultyNames } from '@/lib/constants';
 
 interface InterviewInfo {
   id: string;
@@ -47,8 +36,10 @@ export default function CandidateEntryPage({ params }: { params: Promise<{ id: s
         const iv = data.interview;
         if (iv.status === 'completed') {
           setError('该面试已完成');
+          return;
         } else if (iv.status === 'in_progress') {
           setError('该面试正在进行中');
+          return;
         }
         setInterview(iv);
       } catch {

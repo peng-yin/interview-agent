@@ -1,9 +1,26 @@
-// SiliconFlow 配置（共享，避免多处重复硬编码 baseURL 默认值）
+// SiliconFlow 配置（STT/TTS/Embedding 默认使用此配置）
 export function getSiliconFlowConfig() {
   return {
     baseURL: process.env.SILICONFLOW_BASE_URL || 'https://api.siliconflow.cn/v1',
     apiKey: process.env.SILICONFLOW_API_KEY,
   };
+}
+
+// LLM 独立配置（支持使用不同平台的 LLM，如阿里云百炼、火山引擎等）
+// 如果未设置 LLM_API_KEY，则回退到 SiliconFlow 配置
+export function getLLMConfig() {
+  const llmApiKey = process.env.LLM_API_KEY;
+  const llmBaseURL = process.env.LLM_BASE_URL;
+
+  if (llmApiKey && llmBaseURL) {
+    return {
+      baseURL: llmBaseURL,
+      apiKey: llmApiKey,
+    };
+  }
+
+  // 回退到 SiliconFlow 配置
+  return getSiliconFlowConfig();
 }
 
 // ChromaDB 配置

@@ -1,6 +1,8 @@
 import { AccessToken, AgentDispatchClient } from 'livekit-server-sdk';
 import { NextRequest, NextResponse } from 'next/server';
-import { difficultyMap } from '@/lib/constants';
+import { difficultyMap, positionNames } from '@/lib/constants';
+
+const VALID_POSITIONS = Object.keys(positionNames);
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,11 +11,13 @@ export async function POST(req: NextRequest) {
       room_name,
       participant_name,
       participant_identity,
-      position,
       resume,
       difficulty,
       interview_id,
     } = body;
+
+    // 验证 position 参数
+    const validPosition = VALID_POSITIONS.includes(body.position) ? body.position : 'frontend';
 
     const roomName = room_name || `interview-${Date.now()}`;
     const identity = participant_identity || `user-${Date.now()}`;
@@ -38,7 +42,7 @@ export async function POST(req: NextRequest) {
       identity,
       name,
       metadata: JSON.stringify({
-        position: position || 'frontend',
+        position: validPosition,
         resume: resume || '',
         difficulty: difficultyLabel,
       }),
@@ -55,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     // Set participant attributes for the agent to read
     at.attributes = {
-      'interview.position': position || 'frontend',
+      'interview.position': validPosition,
       'interview.difficulty': difficultyLabel,
       'interview.name': name,
     };
@@ -82,7 +86,7 @@ export async function POST(req: NextRequest) {
 
       const dispatch = await agentDispatchClient.createDispatch(roomName, agentName, {
         metadata: JSON.stringify({
-          position: position || 'frontend',
+          position: validPosition,
           resume: resume || '',
           difficulty: difficultyLabel,
           interview_id: interview_id || '',

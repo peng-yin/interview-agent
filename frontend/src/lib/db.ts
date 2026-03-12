@@ -3,10 +3,11 @@ import path from 'path';
 
 const DB_PATH = path.join(process.cwd(), 'data', 'interviews.db');
 
-let db: Database.Database | null = null;
+// 使用 globalThis 缓存数据库实例，防止 Next.js 热重载时创建多个连接
+const globalForDb = globalThis as unknown as { __interviewDb?: Database.Database };
 
 function getDb(): Database.Database {
-  if (!db) {
+  if (!globalForDb.__interviewDb) {
     // Ensure data directory exists
     const fs = require('fs');
     const dir = path.dirname(DB_PATH);
@@ -14,7 +15,7 @@ function getDb(): Database.Database {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    db = new Database(DB_PATH);
+    const db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
 
@@ -43,8 +44,10 @@ function getDb(): Database.Database {
     } catch {
       // Column already exists, ignore
     }
+
+    globalForDb.__interviewDb = db;
   }
-  return db;
+  return globalForDb.__interviewDb;
 }
 
 export interface Interview {

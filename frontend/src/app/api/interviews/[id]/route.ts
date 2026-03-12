@@ -33,6 +33,11 @@ export async function PATCH(
       return NextResponse.json({ error: '面试不存在' }, { status: 404 });
     }
 
+    // 已完成的面试不允许覆盖报告
+    if (interview.status === 'completed' && interview.report) {
+      return NextResponse.json({ error: '该面试报告已生成，不允许覆盖' }, { status: 409 });
+    }
+
     if (body.report) {
       updateInterviewReport(id, typeof body.report === 'string' ? body.report : JSON.stringify(body.report));
     }
@@ -52,6 +57,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const interview = getInterview(id);
+    if (!interview) {
+      return NextResponse.json({ error: '面试不存在' }, { status: 404 });
+    }
+    // 正在进行的面试不允许删除
+    if (interview.status === 'in_progress') {
+      return NextResponse.json({ error: '面试正在进行中，无法删除' }, { status: 409 });
+    }
     deleteInterview(id);
     return NextResponse.json({ success: true });
   } catch (error) {

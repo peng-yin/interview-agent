@@ -20,7 +20,7 @@ import * as openai from '@livekit/agents-plugin-openai';
 import * as silero from '@livekit/agents-plugin-silero';
 import { InterviewAgent } from './interview-agent.js';
 import { publishJsonData } from './utils/data-channel.js';
-import { getSiliconFlowConfig, positionNames } from './utils/config.js';
+import { getSiliconFlowConfig, getLLMConfig, positionNames } from './utils/config.js';
 
 async function generateAndSendReport(
   session: voice.AgentSession,
@@ -28,7 +28,15 @@ async function generateAndSendReport(
   position: string,
   difficulty: string,
   siliconFlowConfig: { baseURL: string; apiKey: string | undefined },
+  reportLock: { generating: boolean },
 ) {
+  // 防止重复生成报告
+  if (reportLock.generating) {
+    console.log('[Report] Report already generating, skipping duplicate call');
+    return;
+  }
+  reportLock.generating = true;
+
   try {
     // Collect chat history for report generation
     const chatCtx = session.chatCtx;
@@ -39,7 +47,8 @@ async function generateAndSendReport(
       if (item.type === 'message') {
         const msg = item as llm.ChatMessage;
         const text = msg.textContent || '';
-        if (text.trim()) {
+        // 过滤掉 RAG 参考内容（以 [面试题库参考] 标记开头的 system 消息）
+        if (text.trim() && !text.startsWith('[面试题库参考')) {
           messages.push({ role: msg.role, content: text });
         }
       }
@@ -57,9 +66,10 @@ async function generateAndSendReport(
       return;
     }
 
+    const llmConfig = getLLMConfig();
     const reportLLM = new openai.LLM({
       model: process.env.LLM_MODEL || 'deepseek-ai/DeepSeek-V3',
-      ...siliconFlowConfig,
+      ...llmConfig,
     });
 
     const reportPrompt = `你是一位资深的面试评估专家。根据以下面试对话记录，生成一份结构化的面试评估报告。
@@ -183,6 +193,8 @@ export default defineAgent({
 
   entry: async (ctx: JobContext) => {
     const vad = ctx.proc.userData.vad! as silero.VAD;
+    // 每次面试独立的报告生成锁，防止重复生成
+    const reportLock = { generating: false };
 
     // Parse metadata from job dispatch
     let position = 'frontend';
@@ -214,6 +226,7 @@ export default defineAgent({
     console.log(`Starting interview - Position: ${position}, Has Resume: ${!!resume}`);
 
     const siliconFlowConfig = getSiliconFlowConfig();
+    const llmConfig = getLLMConfig();
 
     const session = new voice.AgentSession({
       vad,
@@ -224,7 +237,7 @@ export default defineAgent({
       }),
       llm: new openai.LLM({
         model: process.env.LLM_MODEL || 'deepseek-ai/DeepSeek-V3',
-        ...siliconFlowConfig,
+        ...llmConfig,
       }),
       tts: new openai.TTS({
         model: process.env.TTS_MODEL || 'FunAudioLLM/CosyVoice2-0.5B',
@@ -293,7 +306,7 @@ export default defineAgent({
           // Wait for the closing remark to be spoken, then generate report via code
           setTimeout(async () => {
             console.log('Generating report via direct LLM call...');
-            await generateAndSendReport(session, ctx, position, difficulty, siliconFlowConfig);
+            await generateAndSendReport(session, ctx, position, difficulty, siliconFlowConfig, reportLock);
           }, 5000); // Wait 5 seconds for closing remark
         } catch (err) {
           console.error('Failed to parse end-interview signal:', err);
@@ -306,7 +319,7 @@ export default defineAgent({
         // Agent already said closing remark via generateReply in interview-agent.ts
         setTimeout(async () => {
           console.log('Generating report via direct LLM call (voice trigger)...');
-          await generateAndSendReport(session, ctx, position, difficulty, siliconFlowConfig);
+          await generateAndSendReport(session, ctx, position, difficulty, siliconFlowConfig, reportLock);
         }, 5000);
       }
     });
